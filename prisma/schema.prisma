@@ -1,0 +1,31 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Image {
+  id              Int        @id @default(autoincrement())
+  imageUrl        String
+  instagramHandle String?
+  votes           Int        @default(0)
+  votesList       Vote[]
+}
+
+model Vote {
+  id      Int    @id @default(autoincrement())
+  image   Image  @relation(fields: [imageId], references: [id])
+  imageId Int
+  ip      String
+}
+
+model UserVote {
+  id        Int     @id @default(autoincrement())
+  ip        String  @unique
+  votesLeft Int     @default(25)
+}

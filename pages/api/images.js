@@ -1,13 +1,20 @@
 // pages/api/images.js
-import fs from 'fs';
-import path from 'path';
+import prisma from '../../lib/prisma';
 
-export default function handler(req, res) {
-  const filePath = path.join(process.cwd(), 'data', 'images.json');
-  const fileData = fs.existsSync(filePath)
-    ? fs.readFileSync(filePath)
-    : '[]';
-  const images = JSON.parse(fileData);
-
-  res.status(200).json(images);
+export default async function handler(req, res) {
+  try {
+    const images = await prisma.image.findMany({
+      orderBy: { votes: 'desc' },
+      select: {
+        id: true,
+        imageUrl: true,
+        instagramHandle: true,
+        votes: true,
+      },
+    });
+    res.status(200).json(images);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred' });
+  }
 }

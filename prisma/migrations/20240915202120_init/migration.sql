@@ -1,0 +1,15 @@
+-- CreateTable
+CREATE TABLE "Image" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "imageUrl" TEXT NOT NULL,
+    "instagramHandle" TEXT,
+    "votes" INTEGER NOT NULL DEFAULT 0
+);
+
+-- CreateTable
+CREATE TABLE "Vote" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "imageId" INTEGER NOT NULL,
+    "ip" TEXT NOT NULL,
+    CONSTRAINT "Vote_imageId_fkey" FOREIGN KEY ("imageId") REFERENCES "Image" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);

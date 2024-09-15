@@ -2,83 +2,83 @@
 import { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 
-export default function Home({ images: initialImages }) {
-  const [votesLeft, setVotesLeft] = useState(25);
-  const [votedImages, setVotedImages] = useState([]);
+export default function Home() {
+  const [images, setImages] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [images, setImages] = useState(initialImages);
+  const [votesLeft, setVotesLeft] = useState(25); // Initialize with 25
+  const [votedImageIds, setVotedImageIds] = useState([]);
 
   useEffect(() => {
-    // Initialize votes left from localStorage
-    const votes = localStorage.getItem('votesLeft') || 25;
-    setVotesLeft(Number(votes));
+    // Fetch images from the server
+    fetch('/api/images')
+      .then((res) => res.json())
+      .then((data) => {
+        setImages(data);
+      });
 
-    const voted = localStorage.getItem('votedImages') || '[]';
-    setVotedImages(JSON.parse(voted));
+    // Fetch votesLeft and voted images from the server
+    fetch('/api/user-votes')
+      .then((res) => res.json())
+      .then((data) => {
+        setVotesLeft(data.votesLeft);
+        setVotedImageIds(data.votedImageIds || []);
+      });
   }, []);
 
-  // **Removed the useEffect that sorts images to prevent infinite loop**
-
-  const handleVote = (index) => {
-    if (votesLeft <= 0) {
-      alert('You have no votes left.');
-      return;
-    }
-
-    if (votedImages.includes(index)) {
-      alert('You have already voted for this image.');
-      return;
-    }
-
-    // Update votes in the backend
+  const handleVote = (imageId) => {
     fetch('/api/vote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ index }),
-    });
+      body: JSON.stringify({ imageId }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          alert(data.error);
+        } else {
+          // Update the vote count locally
+          setImages((prevImages) =>
+            prevImages
+              .map((img) =>
+                img.id === imageId ? { ...img, votes: data.votes } : img
+              )
+              .sort((a, b) => b.votes - a.votes)
+          );
+          // Update votesLeft
+          setVotesLeft(data.votesLeft);
 
-    // Update local state
-    setVotesLeft(votesLeft - 1);
-    localStorage.setItem('votesLeft', votesLeft - 1);
+          // Update votedImageIds
+          setVotedImageIds((prevVotedImageIds) => {
+            if (data.hasVoted) {
+              // User has voted; add imageId to the list
+              return [...prevVotedImageIds, imageId];
+            } else {
+              // User has unvoted; remove imageId from the list
+              return prevVotedImageIds.filter((id) => id !== imageId);
+            }
+          });
+        }
+      });
+  };
 
-    const newVotedImages = [...votedImages, index];
-    setVotedImages(newVotedImages);
-    localStorage.setItem('votedImages', JSON.stringify(newVotedImages));
-
-    // Update the vote count in images state
-    const updatedImages = images.map((img, idx) => {
-      if (idx === index) {
-        return { ...img, votes: img.votes + 1 };
-      }
-      return img;
-    });
-
-    // **Sort the updated images**
-    const sortedImages = updatedImages.sort((a, b) => b.votes - a.votes);
-    setImages([...sortedImages]);
+  const hasVotedForImage = (imageId) => {
+    return votedImageIds.includes(imageId);
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center">
       <nav className="p-4 bg-white shadow w-full flex justify-between items-center max-w-md">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="text-blue-500"
-        >
+        <button onClick={() => setIsModalOpen(true)} className="text-blue-500">
           Upload Your Setup
         </button>
-        <span>Votes Left: {votesLeft}</span>
+        <span className="text-gray-700">Votes Left: {votesLeft}</span>
       </nav>
       {/* Include the Modal Component */}
       {isModalOpen && (
-        <UploadModal
-          setIsModalOpen={setIsModalOpen}
-          setImages={setImages}
-          images={images}
-        />
+        <UploadModal setIsModalOpen={setIsModalOpen} setImages={setImages} />
       )}
 
-      {/* Updated Title with Off-Black Color */}
+      {/* Title */}
       <div className="w-full max-w-md mt-6 mb-4 px-4">
         <h1 className="text-3xl font-bold text-center text-gray-800">
           The internet's favourite desk setups. Curated by you.
@@ -86,48 +86,50 @@ export default function Home({ images: initialImages }) {
       </div>
 
       <div className="p-4 w-full max-w-md">
-        {images.map((image, idx) => (
-          <div key={idx} className="bg-white p-4 rounded shadow mb-4">
-            <div className="w-full h-64 overflow-hidden flex items-center justify-center">
-              <img
-                src={image.imageUrl}
-                alt="Desk Setup"
-                className="object-cover h-full w-full"
-              />
-            </div>
-            <div className="flex justify-between items-center mt-2">
-              {image.instagramHandle ? (
-                <a
-                  href={`https://instagram.com/${image.instagramHandle}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500"
+        {images.map((image) => {
+          const hasVoted = hasVotedForImage(image.id);
+
+          return (
+            <div key={image.id} className="bg-white p-4 rounded shadow mb-4">
+              <div className="w-full h-64 overflow-hidden flex items-center justify-center">
+                <img
+                  src={image.imageUrl}
+                  alt="Desk Setup"
+                  className="object-cover h-full w-full"
+                />
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                {image.instagramHandle ? (
+                  <a
+                    href={`https://instagram.com/${image.instagramHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500"
+                  >
+                    @{image.instagramHandle}
+                  </a>
+                ) : (
+                  <span></span>
+                )}
+                <button
+                  onClick={() => handleVote(image.id)}
+                  className={`p-2 rounded ${
+                    hasVoted ? 'text-red-500' : 'text-gray-500'
+                  } hover:text-red-500`}
+                  disabled={!hasVoted && votesLeft <= 0}
                 >
-                  @{image.instagramHandle}
-                </a>
-              ) : (
-                <span></span>
-              )}
-              <button
-                onClick={() => handleVote(idx)}
-                className={`p-2 rounded ${
-                  votedImages.includes(idx)
-                    ? 'text-red-500'
-                    : 'text-gray-500 hover:text-red-500'
-                }`}
-                disabled={votedImages.includes(idx)}
-              >
-                ❤️ {image.votes}
-              </button>
+                  {hasVoted ? '💔' : '❤️'} {image.votes}
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function UploadModal({ setIsModalOpen, setImages, images }) {
+function UploadModal({ setIsModalOpen, setImages }) {
   const [image, setImage] = useState(null);
   const [instagramHandle, setInstagramHandle] = useState('');
 
@@ -148,20 +150,18 @@ function UploadModal({ setIsModalOpen, setImages, images }) {
       body: formData,
     });
 
+    const data = await res.json();
+
     if (res.ok) {
       alert('Image uploaded successfully!');
       setImage(null);
       setInstagramHandle('');
-      setIsModalOpen(false); // Close the modal after successful upload
+      setIsModalOpen(false);
 
-      // Fetch the new images list
-      const newImages = await fetch('/api/images').then((res) => res.json());
-      
-      // **Sort the new images before setting state**
-      newImages.sort((a, b) => b.votes - a.votes);
-      setImages(newImages);
+      // Update the images list
+      setImages((prevImages) => [data.image, ...prevImages]);
     } else {
-      alert('Failed to upload image.');
+      alert(data.error || 'Failed to upload image.');
     }
   };
 
@@ -204,20 +204,4 @@ function UploadModal({ setIsModalOpen, setImages, images }) {
     </div>,
     document.body
   );
-}
-
-export async function getServerSideProps() {
-  const fs = require('fs');
-  const path = require('path');
-
-  const filePath = path.join(process.cwd(), 'data', 'images.json');
-  const fileData = fs.existsSync(filePath)
-    ? fs.readFileSync(filePath)
-    : '[]';
-  const images = JSON.parse(fileData);
-
-  // Sort images by highest votes
-  images.sort((a, b) => b.votes - a.votes);
-
-  return { props: { images } };
 }
