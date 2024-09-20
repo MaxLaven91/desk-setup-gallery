@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import Image from 'next/image'; // Import Next.js Image component
 
 export default function Home() {
-  const [images, setImages] = useState([]);
+  const [images, setImages] = useState([]); // Ensure images is initialized as an empty array
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [votesLeft, setVotesLeft] = useState(25); // Initialize with 25
   const [votedImageIds, setVotedImageIds] = useState([]);
@@ -13,15 +13,28 @@ export default function Home() {
     fetch('/api/images')
       .then((res) => res.json())
       .then((data) => {
-        setImages(data);
+        if (Array.isArray(data)) {
+          setImages(data); // Ensure data is an array before setting it
+        } else {
+          setImages([]); // If data is not an array, set to empty array
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching images:', error);
+        setImages([]); // Fallback to empty array on error
       });
 
     // Fetch votesLeft and voted images from the server
     fetch('/api/user-votes')
       .then((res) => res.json())
       .then((data) => {
-        setVotesLeft(data.votesLeft);
-        setVotedImageIds(data.votedImageIds || []);
+        setVotesLeft(data.votesLeft || 25); // Default to 25 if undefined
+        setVotedImageIds(data.votedImageIds || []); // Ensure an empty array if not provided
+      })
+      .catch((error) => {
+        console.error('Error fetching votes:', error);
+        setVotesLeft(25); // Fallback to 25 votes on error
+        setVotedImageIds([]); // Fallback to empty array on error
       });
   }, []);
 
@@ -58,6 +71,9 @@ export default function Home() {
             }
           });
         }
+      })
+      .catch((error) => {
+        console.error('Error voting:', error);
       });
   };
 
@@ -73,6 +89,7 @@ export default function Home() {
         </button>
         <span className="text-gray-700">Votes Left: {votesLeft}</span>
       </nav>
+
       {/* Include the Modal Component */}
       {isModalOpen && (
         <UploadModal setIsModalOpen={setIsModalOpen} setImages={setImages} />
@@ -86,46 +103,50 @@ export default function Home() {
       </div>
 
       <div className="p-4 w-full max-w-md">
-        {images.map((image) => {
-          const hasVoted = hasVotedForImage(image.id);
+        {images.length > 0 ? (
+          images.map((image) => {
+            const hasVoted = hasVotedForImage(image.id);
 
-          return (
-            <div key={image.id} className="bg-white p-4 rounded shadow mb-4">
-              <div className="w-full h-64 overflow-hidden flex items-center justify-center">
-                <Image
-                  src={image.imageUrl}
-                  alt="Desk Setup"
-                  width={800} // Set your image width here
-                  height={600} // Set your image height here
-                  className="object-cover h-full w-full"
-                />
-              </div>
-              <div className="flex justify-between items-center mt-2">
-                {image.instagramHandle ? (
-                  <a
-                    href={`https://instagram.com/${image.instagramHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500"
+            return (
+              <div key={image.id} className="bg-white p-4 rounded shadow mb-4">
+                <div className="w-full h-64 overflow-hidden flex items-center justify-center">
+                  <Image
+                    src={image.imageUrl}
+                    alt="Desk Setup"
+                    width={800} // Set your image width here
+                    height={600} // Set your image height here
+                    className="object-cover h-full w-full"
+                  />
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  {image.instagramHandle ? (
+                    <a
+                      href={`https://instagram.com/${image.instagramHandle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500"
+                    >
+                      @{image.instagramHandle}
+                    </a>
+                  ) : (
+                    <span></span>
+                  )}
+                  <button
+                    onClick={() => handleVote(image.id)}
+                    className={`p-2 rounded ${
+                      hasVoted ? 'text-red-500' : 'text-gray-500'
+                    } hover:text-red-500`}
+                    disabled={!hasVoted && votesLeft <= 0}
                   >
-                    @{image.instagramHandle}
-                  </a>
-                ) : (
-                  <span></span>
-                )}
-                <button
-                  onClick={() => handleVote(image.id)}
-                  className={`p-2 rounded ${
-                    hasVoted ? 'text-red-500' : 'text-gray-500'
-                  } hover:text-red-500`}
-                  disabled={!hasVoted && votesLeft <= 0}
-                >
-                  {hasVoted ? '💔' : '❤️'} {image.votes}
-                </button>
+                    {hasVoted ? '💔' : '❤️'} {image.votes}
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <p>No images found.</p>
+        )}
       </div>
     </div>
   );

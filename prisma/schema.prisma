@@ -1,27 +1,28 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+     provider  = "postgresql"
+     url       = env("DATABASE_URL")
+     directUrl = env("DIRECT_URL")
+   }
 
-generator client {
-  provider = "prisma-client-js"
-}
+   generator client {
+     provider = "prisma-client-js"
+   }
 
-model Image {
-  id              Int      @id @default(autoincrement())
-  imageUrl        String
-  instagramHandle String?
-  votes           Int      @default(0)
-}
+   model Image {
+     id              Int      @id @default(autoincrement())
+     imageUrl        String
+     instagramHandle String?
+     votes           Int      @default(0)
+   }
 
-model Vote {
-  id      Int    @id @default(autoincrement())
-  imageId Int
-  ip      String
-}
+   model Vote {
+     id      Int    @id @default(autoincrement())
+     imageId Int
+     ip      String
+   }
 
-model UserVote {
-  id        Int    @id @default(autoincrement())
-  ip        String @unique
-  votesLeft Int    @default(25)
-}
+   model UserVote {
+     id        Int    @id @default(autoincrement())
+     ip        String @unique
+     votesLeft Int    @default(25)
+   }
