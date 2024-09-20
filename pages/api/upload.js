@@ -28,6 +28,7 @@ export default async function handler(req, res) {
       console.log('Attempting to upload to Vercel Blob...');
       const { url } = await put(file.originalFilename, fileBuffer, {
         access: 'public',
+        token: process.env.BLOB_READ_WRITE_TOKEN
       });
 
       console.log('Upload successful');
