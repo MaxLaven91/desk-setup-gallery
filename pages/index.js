@@ -1,6 +1,6 @@
-// pages/index.js
 import { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import Image from 'next/image'; // Import Next.js Image component
 
 export default function Home() {
   const [images, setImages] = useState([]);
@@ -81,7 +81,7 @@ export default function Home() {
       {/* Title */}
       <div className="w-full max-w-md mt-6 mb-4 px-4">
         <h1 className="text-3xl font-bold text-center text-gray-800">
-          The internet's favourite desk setups. Curated by you.
+          The internet&apos;s favourite desk setups. Curated by you.
         </h1>
       </div>
 
@@ -92,9 +92,11 @@ export default function Home() {
           return (
             <div key={image.id} className="bg-white p-4 rounded shadow mb-4">
               <div className="w-full h-64 overflow-hidden flex items-center justify-center">
-                <img
+                <Image
                   src={image.imageUrl}
                   alt="Desk Setup"
+                  width={800} // Set your image width here
+                  height={600} // Set your image height here
                   className="object-cover h-full w-full"
                 />
               </div>
