@@ -1,17 +1,11 @@
+import { IncomingForm } from 'formidable';
 import cloudinary from 'cloudinary';
-import multer from 'multer';
-import { promisify } from 'util';
 
-// Cloudinary configuration
-cloudinary.v2.config({
+cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
-// Multer setup
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 export const config = {
   api: {
@@ -19,43 +13,48 @@ export const config = {
   },
 };
 
-// Helper function to run middleware
-const runMiddleware = (req, res, fn) => {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-};
-
-// Promisify Cloudinary upload
-const cloudinaryUpload = promisify(cloudinary.v2.uploader.upload);
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  try {
-    // Handle file upload with Multer
-    await runMiddleware(req, res, upload.single('image'));
+  const form = new IncomingForm();
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      console.error('Form parsing error:', err);
+      return res.status(500).json({ error: 'Error processing form' });
     }
 
-    // Upload to Cloudinary
-    const result = await cloudinaryUpload(req.file.buffer, {
-      resource_type: 'image'
-    });
+    try {
+      const file = files.image[0];
+      
+      // Read the file into a buffer
+      const fileBuffer = await readFileAsBuffer(file.filepath);
 
-    // Return the Cloudinary URL
-    return res.status(200).json({ url: result.secure_url });
-  } catch (error) {
-    console.error('Upload error:', error);
-    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
-  }
+      // Upload buffer to Cloudinary
+      const result = await new Promise((resolve, reject) => {
+        cloudinary.v2.uploader.upload_stream(
+          { resource_type: 'auto' },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        ).end(fileBuffer);
+      });
+
+      // Here you would typically save the image URL and social link to your database
+      
+      res.status(200).json({ url: result.secure_url });
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(500).json({ error: 'Error uploading image' });
+    }
+  });
+}
+
+// Helper function to read file as buffer
+function readFileAsBuffer(filepath) {
+  const fs = require('fs').promises;
+  return fs.readFile(filepath);
 }
