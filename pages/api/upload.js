@@ -1,12 +1,6 @@
 import { IncomingForm } from 'formidable';
-import { v2 as cloudinary } from 'cloudinary';
+import { put } from '@vercel/blob';
 import fs from 'fs/promises';
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 export const config = {
   api: {
@@ -31,22 +25,19 @@ export default async function handler(req, res) {
       const file = files.image[0];
       const fileBuffer = await fs.readFile(file.filepath);
 
-      const result = await new Promise((resolve, reject) => {
-        cloudinary.uploader.upload_stream(
-          { resource_type: 'auto' },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        ).end(fileBuffer);
+      console.log('Attempting to upload to Vercel Blob...');
+      const { url } = await put(file.originalFilename, fileBuffer, {
+        access: 'public',
       });
 
+      console.log('Upload successful');
+      
       // Here you would typically save the image URL and social link to your database
       
-      res.status(200).json({ url: result.secure_url });
+      res.status(200).json({ url });
     } catch (error) {
       console.error('Upload error:', error);
-      res.status(500).json({ error: 'Error uploading image' });
+      res.status(500).json({ error: 'Error uploading image', details: error.message });
     }
   });
 }
