@@ -1,4 +1,3 @@
-// pages/api/user-votes.js
 import prisma from '../../lib/prisma';
 
 export default async function handler(req, res) {
@@ -14,13 +13,11 @@ export default async function handler(req, res) {
     });
 
     if (!userVote) {
-      // Create a new UserVote record for this IP
       userVote = await prisma.userVote.create({
         data: { ip },
       });
     }
 
-    // Get the list of image IDs the user has voted for
     const votes = await prisma.vote.findMany({
       where: { ip },
       select: { imageId: true },
@@ -35,5 +32,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'An error occurred' });
+  } finally {
+    await prisma.$disconnect();
   }
 }
