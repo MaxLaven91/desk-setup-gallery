@@ -4,12 +4,15 @@ import { useState } from 'react';
 export default function Upload() {
   const [image, setImage] = useState(null);
   const [socialLink, setSocialLink] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsUploading(true);
 
     if (!image || !socialLink) {
       alert('Please provide both an image and your social media link.');
+      setIsUploading(false);
       return;
     }
 
@@ -17,17 +20,29 @@ export default function Upload() {
     formData.append('image', image);
     formData.append('socialLink', socialLink);
 
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      console.log('Sending upload request...');
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-    if (res.ok) {
-      alert('Image uploaded successfully!');
-      setImage(null);
-      setSocialLink('');
-    } else {
-      alert('Failed to upload image.');
+      console.log('Response status:', res.status);
+      const responseData = await res.json();
+      console.log('Response data:', responseData);
+
+      if (res.ok) {
+        alert('Image uploaded successfully!');
+        setImage(null);
+        setSocialLink('');
+      } else {
+        throw new Error(responseData.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert(`Failed to upload image: ${error.message}`);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -59,8 +74,9 @@ export default function Upload() {
         <button
           type="submit"
           className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+          disabled={isUploading}
         >
-          Upload
+          {isUploading ? 'Uploading...' : 'Upload'}
         </button>
       </form>
     </div>
