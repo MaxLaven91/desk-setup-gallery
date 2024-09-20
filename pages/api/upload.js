@@ -1,8 +1,9 @@
 import cloudinary from 'cloudinary';
 import multer from 'multer';
+import { promisify } from 'util';
 
 // Cloudinary configuration
-cloudinary.config({
+cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
@@ -18,23 +19,43 @@ export const config = {
   },
 };
 
+// Helper function to run middleware
+const runMiddleware = (req, res, fn) => {
+  return new Promise((resolve, reject) => {
+    fn(req, res, (result) => {
+      if (result instanceof Error) {
+        return reject(result);
+      }
+      return resolve(result);
+    });
+  });
+};
+
+// Promisify Cloudinary upload
+const cloudinaryUpload = promisify(cloudinary.v2.uploader.upload);
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  // Handle image upload with Cloudinary
   try {
+    // Handle file upload with Multer
     await runMiddleware(req, res, upload.single('image'));
-    const imageBuffer = req.file.buffer;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
 
     // Upload to Cloudinary
-    const result = await cloudinary.v2.uploader.upload_stream({ resource_type: 'image' }, (error, result) => {
-      if (error) return res.status(500).json({ error: 'Cloudinary upload failed' });
-      return res.status(200).json({ url: result.secure_url });
-    }).end(imageBuffer);
+    const result = await cloudinaryUpload(req.file.buffer, {
+      resource_type: 'image'
+    });
+
+    // Return the Cloudinary URL
+    return res.status(200).json({ url: result.secure_url });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Upload error:', error);
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 }
