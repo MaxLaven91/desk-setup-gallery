@@ -85,7 +85,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-100 flex flex-col items-center">
       <nav className="p-4 bg-white shadow w-full flex justify-between items-center max-w-md">
         <button onClick={() => setIsModalOpen(true)} className="text-blue-500">
-          Upload Your Setup
+          Upload Your Setu
         </button>
         <span className="text-gray-700">Votes Left: {votesLeft}</span>
       </nav>
