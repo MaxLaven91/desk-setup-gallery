@@ -1,6 +1,7 @@
 import { IncomingForm } from 'formidable';
 import { put } from '@vercel/blob';
 import fs from 'fs/promises';
+import prisma from '../../lib/prisma'; // Ensure this path is correct for your Prisma client
 
 export const config = {
   api: {
@@ -33,9 +34,15 @@ export default async function handler(req, res) {
 
       console.log('Upload successful');
       
-      // Here you would typically save the image URL and social link to your database
-      
-      res.status(200).json({ url });
+      // Save the image URL and social link to your database
+      const image = await prisma.image.create({
+        data: {
+          imageUrl: url,
+          instagramHandle: fields.instagramHandle ? fields.instagramHandle[0] : null,
+        },
+      });
+
+      res.status(200).json({ id: image.id, url: image.imageUrl, instagramHandle: image.instagramHandle });
     } catch (error) {
       console.error('Upload error:', error);
       res.status(500).json({ error: 'Error uploading image', details: error.message });
