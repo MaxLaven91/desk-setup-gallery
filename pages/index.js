@@ -108,7 +108,7 @@ export default function Home() {
 
       <div className="w-full max-w-md mt-6 mb-4 px-4">
         <h1 className="text-3xl font-bold text-center text-gray-800">
-          The internet&apos;s favourite desk setup. Curated by you.
+          The internet&apos;s favourite desk setups. Curated by you.
         </h1>
       </div>
 
@@ -122,7 +122,10 @@ export default function Home() {
             const hasVoted = hasVotedForImage(image.id);
 
             return (
-              <div key={image.id || `fallback-${Math.random()}`} className="bg-white p-4 rounded shadow mb-4">
+              <div
+                key={image.id || `fallback-${Math.random()}`}
+                className="bg-white p-4 rounded shadow mb-4"
+              >
                 <div className="w-full h-64 overflow-hidden flex items-center justify-center">
                   <Image
                     src={image.imageUrl}
@@ -134,7 +137,7 @@ export default function Home() {
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   {image.instagramHandle ? (
-                    
+                    <a
                       href={`https://instagram.com/${image.instagramHandle}`}
                       target="_blank"
                       rel="noopener noreferrer"
