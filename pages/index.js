@@ -1,40 +1,53 @@
 import { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import Image from 'next/image'; // Import Next.js Image component
+import Image from 'next/image';
 
 export default function Home() {
-  const [images, setImages] = useState([]); // Ensure images is initialized as an empty array
+  const [images, setImages] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [votesLeft, setVotesLeft] = useState(25); // Initialize with 25
+  const [votesLeft, setVotesLeft] = useState(25);
   const [votedImageIds, setVotedImageIds] = useState([]);
 
   useEffect(() => {
     // Fetch images from the server
     fetch('/api/images')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
+        console.log('Received data from /api/images:', data);
         if (Array.isArray(data)) {
-          setImages(data); // Ensure data is an array before setting it
+          setImages(data);
         } else {
-          setImages([]); // If data is not an array, set to empty array
+          console.error('Data is not an array:', data);
+          setImages([]);
         }
       })
       .catch((error) => {
         console.error('Error fetching images:', error);
-        setImages([]); // Fallback to empty array on error
+        setImages([]);
       });
 
     // Fetch votesLeft and voted images from the server
     fetch('/api/user-votes')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
-        setVotesLeft(data.votesLeft || 25); // Default to 25 if undefined
-        setVotedImageIds(data.votedImageIds || []); // Ensure an empty array if not provided
+        console.log('Received data from /api/user-votes:', data);
+        setVotesLeft(data.votesLeft || 25);
+        setVotedImageIds(data.votedImageIds || []);
       })
       .catch((error) => {
         console.error('Error fetching votes:', error);
-        setVotesLeft(25); // Fallback to 25 votes on error
-        setVotedImageIds([]); // Fallback to empty array on error
+        setVotesLeft(25);
+        setVotedImageIds([]);
       });
   }, []);
 
@@ -44,12 +57,16 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imageId }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         if (data.error) {
           alert(data.error);
         } else {
-          // Update the vote count locally
           setImages((prevImages) =>
             prevImages
               .map((img) =>
@@ -57,16 +74,11 @@ export default function Home() {
               )
               .sort((a, b) => b.votes - a.votes)
           );
-          // Update votesLeft
           setVotesLeft(data.votesLeft);
-
-          // Update votedImageIds
           setVotedImageIds((prevVotedImageIds) => {
             if (data.hasVoted) {
-              // User has voted; add imageId to the list
               return [...prevVotedImageIds, imageId];
             } else {
-              // User has unvoted; remove imageId from the list
               return prevVotedImageIds.filter((id) => id !== imageId);
             }
           });
@@ -90,12 +102,10 @@ export default function Home() {
         <span className="text-gray-700">Votes Left: {votesLeft}</span>
       </nav>
 
-      {/* Include the Modal Component */}
       {isModalOpen && (
         <UploadModal setIsModalOpen={setIsModalOpen} setImages={setImages} />
       )}
 
-      {/* Title */}
       <div className="w-full max-w-md mt-6 mb-4 px-4">
         <h1 className="text-3xl font-bold text-center text-gray-800">
           The internet&apos;s favourite desk setup. Curated by you.
@@ -103,24 +113,28 @@ export default function Home() {
       </div>
 
       <div className="p-4 w-full max-w-md">
-        {images.length > 0 ? (
+        {images && images.length > 0 ? (
           images.map((image) => {
+            if (!image || typeof image !== 'object') {
+              console.log('Invalid image object:', image);
+              return null;
+            }
             const hasVoted = hasVotedForImage(image.id);
 
             return (
-              <div key={image.id} className="bg-white p-4 rounded shadow mb-4">
+              <div key={image.id || `fallback-${Math.random()}`} className="bg-white p-4 rounded shadow mb-4">
                 <div className="w-full h-64 overflow-hidden flex items-center justify-center">
                   <Image
                     src={image.imageUrl}
                     alt="Desk Setup"
-                    width={800} // Set your image width here
-                    height={600} // Set your image height here
+                    width={800}
+                    height={600}
                     className="object-cover h-full w-full"
                   />
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   {image.instagramHandle ? (
-                    <a
+                    
                       href={`https://instagram.com/${image.instagramHandle}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -168,23 +182,28 @@ function UploadModal({ setIsModalOpen, setImages }) {
     formData.append('image', image);
     formData.append('instagramHandle', instagramHandle);
 
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-    const data = await res.json();
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
-    if (res.ok) {
+      const data = await res.json();
+      console.log('Upload response:', data);
+
       alert('Image uploaded successfully!');
       setImage(null);
       setInstagramHandle('');
       setIsModalOpen(false);
 
-      // Update the images list
       setImages((prevImages) => [data.image, ...prevImages]);
-    } else {
-      alert(data.error || 'Failed to upload image.');
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert(`Failed to upload image: ${error.message}`);
     }
   };
 
