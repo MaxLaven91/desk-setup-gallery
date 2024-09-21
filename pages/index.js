@@ -108,7 +108,7 @@ export default function Home() {
 
       <div className="w-full max-w-md mt-6 mb-4 px-4">
         <h1 className="text-3xl font-bold text-center text-gray-800">
-          The internet&apos;s favourite desk setups. Curated by you.
+          The internet&apos;s favourite desk. Curated by you.
         </h1>
       </div>
 
