@@ -1,7 +1,8 @@
+// api/upload.js
 import { IncomingForm } from 'formidable';
 import { put } from '@vercel/blob';
 import fs from 'fs/promises';
-import prisma from '../../lib/prisma'; // Ensure this path is correct for your Prisma client
+import prisma from '../../lib/prisma'; // Adjust path as needed
 
 export const config = {
   api: {
@@ -25,6 +26,7 @@ export default async function handler(req, res) {
     try {
       const file = files.image[0];
       const fileBuffer = await fs.readFile(file.filepath);
+      const socialLink = fields.socialLink[0];
 
       console.log('Attempting to upload to Vercel Blob...');
       const { url } = await put(file.originalFilename, fileBuffer, {
@@ -38,11 +40,15 @@ export default async function handler(req, res) {
       const image = await prisma.image.create({
         data: {
           imageUrl: url,
-          instagramHandle: fields.instagramHandle ? fields.instagramHandle[0] : null,
+          instagramHandle: socialLink,
         },
       });
 
-      res.status(200).json({ id: image.id, url: image.imageUrl, instagramHandle: image.instagramHandle });
+      res.status(200).json({ 
+        id: image.id, 
+        url: image.imageUrl, 
+        instagramHandle: image.instagramHandle 
+      });
     } catch (error) {
       console.error('Upload error:', error);
       res.status(500).json({ error: 'Error uploading image', details: error.message });
